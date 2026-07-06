@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Site Margin — Estimate Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #122A43;
+    --navy-deep: #0C1F33;
+    --line-cyan: #6FA8C9;
+    --line-cyan-dim: rgba(111,168,201,0.22);
+    --paper: #F4EFE3;
+    --paper-dim: #E8E1D0;
+    --ink: #1C1F22;
+    --ink-soft: #55524A;
+    --orange: #E8590C;
+    --orange-dim: rgba(232,89,12,0.14);
+    --red: #B23A2E;
+    --red-dim: rgba(178,58,46,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--navy);
+    background-image:
+      linear-gradient(var(--line-cyan-dim) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-cyan-dim) 1px, transparent 1px);
+    background-size: 28px 28px;
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    padding: 18px 12px 48px;
+    display:flex;
+    justify-content:center;
+  }
+  .device{ width:100%; max-width:430px; }
+  .titleblock{ color:var(--paper); padding: 6px 4px 16px; text-align:center; }
+  .titleblock .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.14em;
+    color:var(--line-cyan); text-transform:uppercase;
+  }
+  .titleblock h1{
+    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:40px;
+    letter-spacing:0.01em; text-transform:uppercase; margin: 2px 0 2px; line-height:0.95;
+  }
+  .titleblock .stamp-note{
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:0.08em;
+    color: rgba(244,239,227,0.55); text-transform:uppercase;
+    border-top: 1px dashed rgba(111,168,201,0.4); border-bottom: 1px dashed rgba(111,168,201,0.4);
+    padding: 5px 0; margin-top:8px;
+  }
+
+  .card{ background:var(--paper); border-radius:3px; padding:16px; margin-bottom:12px; box-shadow: 0 8px 24px rgba(0,0,0,0.28); }
+
+  .field-label{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--ink-soft); margin-bottom:7px; display:flex; justify-content:space-between;
+  }
+
+  .seg{ display:flex; gap:6px; margin-bottom:16px; }
+  .seg button{
+    flex:1; background:transparent; border:1.5px solid var(--paper-dim); border-radius:3px;
+    padding:8px 4px; font-family:'IBM Plex Sans', sans-serif; font-weight:600; font-size:12px;
+    color:var(--ink-soft); cursor:pointer; transition: all 0.15s ease;
+  }
+  .seg button.active{ background:var(--ink); border-color:var(--ink); color:var(--paper); }
+  .seg button:focus-visible{ outline:2px solid var(--orange); outline-offset:1px; }
+
+  .slider-row{ margin-bottom:16px; }
+  .slider-row:last-child{ margin-bottom:0; }
+  .slider-value{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--ink); }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; margin:2px 0 0; }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:6px; background: repeating-linear-gradient(90deg, var(--ink-soft) 0 1.5px, transparent 1.5px 12px);
+    background-color: var(--paper-dim); border-radius:1px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; background:var(--orange);
+    border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--ink); border-radius:2px;
+    transform: rotate(45deg); margin-top:-5px; cursor:pointer;
+  }
+  input[type=range]::-moz-range-track{ height:6px; background-color: var(--paper-dim); border-radius:1px; }
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:14px; background:var(--orange); border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--ink); border-radius:2px; transform: rotate(45deg); cursor:pointer;
+  }
+  input[type=range]:focus-visible{ outline:2px solid var(--orange); outline-offset:3px; }
+
+  .tabbar{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:4px;
+    background:var(--navy-deep); border-radius:4px; padding:4px; margin-bottom:12px;
+  }
+  .tabbar button{
+    background:transparent; border:none; padding:9px 2px;
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.04em;
+    text-transform:uppercase; color: rgba(244,239,227,0.5); border-radius:3px; cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .tabbar button.active{ background:var(--orange); color:var(--navy-deep); font-weight:600; }
+  .tabbar button:focus-visible{ outline:2px solid var(--line-cyan); outline-offset:1px; }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation: fadein 0.2s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:translateY(0);} }
+
+  .big-number{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:38px; letter-spacing:-0.01em; line-height:1; margin: 2px 0 0; }
+  .big-number-label{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-soft); }
+  .stat-row{ display:flex; justify-content:space-between; padding: 10px 0; border-top:1px solid var(--paper-dim); font-size:13px; }
+  .stat-row .k{ color:var(--ink-soft); }
+  .stat-row .v{ font-family:'IBM Plex Mono', monospace; font-weight:600; }
+  .divider{ height:1px; background:var(--paper-dim); margin:14px 0; }
+
+  .bar-item{ margin-bottom:12px; }
+  .bar-item:last-child{ margin-bottom:0; }
+  .bar-item .bar-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:5px; }
+  .bar-item .bar-top .name{ font-weight:500; }
+  .bar-item .bar-top .amt{ font-family:'IBM Plex Mono', monospace; color:var(--ink-soft); }
+  .bar-track{ height:8px; background:var(--paper-dim); border-radius:1px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--navy); border-radius:1px; transition: width 0.25s ease; }
+
+  .phase-item{ margin-bottom:10px; }
+  .phase-item:last-child{ margin-bottom:0; }
+  .phase-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:4px; }
+  .phase-top .name{ font-weight:500; }
+  .phase-top .wk{ font-family:'IBM Plex Mono', monospace; color:var(--ink-soft); }
+  .phase-track{ height:8px; background:var(--paper-dim); border-radius:1px; overflow:hidden; display:flex; }
+  .phase-fill{ height:100%; border-right: 2px solid var(--paper); }
+  .phase-fill:last-child{ border-right:none; }
+
+  .stamp{
+    display:inline-block; font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:15px;
+    letter-spacing:0.06em; text-transform:uppercase; padding: 7px 14px; border: 3px solid currentColor;
+    border-radius:4px; transform: rotate(-3deg); margin: 10px 0 4px;
+  }
+  .stamp.healthy{ color:var(--orange); }
+  .stamp.thin{ color:var(--red); }
+
+  .whatif{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-top:10px; }
+  .whatif b{ color:var(--ink); font-family:'IBM Plex Mono', monospace; }
+
+  /* Materials line items */
+  .trade-block{ margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--paper-dim); }
+  .trade-block:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .trade-head{ display:flex; justify-content:space-between; font-size:12.5px; font-weight:600; margin-bottom:8px; }
+  .trade-head .amt{ font-family:'IBM Plex Mono', monospace; }
+  .line-item{ margin-bottom:8px; }
+  .line-item:last-child{ margin-bottom:0; }
+  .line-top{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-soft); margin-bottom:4px; }
+  .line-top .line-amt{ font-family:'IBM Plex Mono', monospace; color:var(--ink); font-weight:600; }
+  .line-inputs{ display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft); }
+  .line-inputs input{
+    width:56px; padding:4px 5px; border:1px solid var(--paper-dim); border-radius:2px;
+    background:#fff; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink);
+  }
+  .line-inputs input:focus-visible{ outline:2px solid var(--orange); outline-offset:1px; }
+  .reset-btn{
+    width:100%; margin-top:14px; padding:9px; background:transparent; border:1.5px dashed var(--ink-soft);
+    border-radius:3px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--ink-soft); cursor:pointer;
+  }
+  .reset-btn:hover{ border-color:var(--ink); color:var(--ink); }
+
+  /* Portfolio */
+  .rollup-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .rollup-box{ flex:1; text-align:center; background:var(--paper-dim); border-radius:3px; padding:10px 4px; }
+  .rollup-box .rl-label{ font-family:'IBM Plex Mono', monospace; font-size:8.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft); }
+  .rollup-box .rl-val{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:16px; margin-top:2px; }
+  .proj-card{ background:var(--paper-dim); border-radius:3px; padding:12px; margin-bottom:10px; }
+  .proj-card:last-child{ margin-bottom:0; }
+  .proj-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px; }
+  .proj-name{ font-weight:600; font-size:13px; }
+  .proj-phase{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft); text-transform:uppercase; margin-bottom:8px; }
+  .proj-bar-track{ height:7px; background:#fff; border-radius:1px; overflow:hidden; margin-bottom:6px; }
+  .proj-bar-fill{ height:100%; border-radius:1px; }
+  .proj-stats{ display:flex; justify-content:space-between; font-size:11px; font-family:'IBM Plex Mono', monospace; color:var(--ink-soft); }
+  .proj-stats b{ color:var(--ink); }
+  .proj-stats .profit-warn{ color:var(--red); }
+  .proj-stats .profit-good{ color:var(--orange); }
+
+  /* Docs */
+  .doc-item{
+    display:flex; align-items:center; justify-content:space-between; padding:11px 2px;
+    border-top:1px solid var(--paper-dim); cursor:pointer; user-select:none;
+  }
+  .doc-item:first-child{ border-top:none; }
+  .doc-name{ font-size:13px; font-weight:500; }
+  .doc-status{ display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; }
+  .doc-dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .doc-hint{ font-size:10.5px; color:var(--ink-soft); margin-top:12px; text-align:center; font-family:'IBM Plex Mono', monospace; }
+
+  .footer-note{
+    text-align:center; font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:0.06em;
+    color: rgba(244,239,227,0.45); margin-top: 18px; line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="device">
+
+  <div class="titleblock">
+    <div class="eyebrow">Goins Digital · Jobsite Tools</div>
+    <h1>Site Margin</h1>
+    <div class="stamp-note">Preliminary Estimate — Not For Construction</div>
+  </div>
+
+  <div class="card">
+    <div class="field-label"><span>Build Type</span></div>
+    <div class="seg" id="seg-buildtype">
+      <button data-value="tiny" class="active">Tiny Home / ADU</button>
+      <button data-value="duplex">Duplex</button>
+      <button data-value="spec">Spec Home</button>
+    </div>
+
+    <div class="field-label"><span>Region</span></div>
+    <div class="seg" id="seg-region">
+      <button data-value="danville" class="active">Danville, VA</button>
+      <button data-value="durham">Durham, NC</button>
+    </div>
+
+    <div class="field-label"><span>Finish Tier</span></div>
+    <div class="seg" id="seg-finish">
+      <button data-value="builder">Builder Grade</button>
+      <button data-value="standard" class="active">Standard</button>
+      <button data-value="premium">Premium</button>
+    </div>
+
+    <div class="slider-row">
+      <div class="field-label"><span>Square Footage</span><span class="slider-value" id="sqft-label">600 sqft</span></div>
+      <input type="range" id="sqft-slider" min="400" max="900" step="25" value="600">
+    </div>
+  </div>
+
+  <div class="tabbar" id="tabbar">
+    <button data-tab="quote" class="active">Quote</button>
+    <button data-tab="materials">Materials</button>
+    <button data-tab="timeline">Timeline</button>
+    <button data-tab="profit">Profit</button>
+    <button data-tab="portfolio">Portfolio</button>
+    <button data-tab="docs">Permits</button>
+  </div>
+
+  <div class="card panel active" id="panel-quote">
+    <div class="big-number-label">Total Quote</div>
+    <div class="big-number" id="quote-total">$0</div>
+    <div class="stat-row"><span class="k">Cost per sqft</span><span class="v" id="quote-persqft">$0</span></div>
+    <div class="stat-row"><span class="k">Estimated timeline</span><span class="v" id="quote-weeks">0 wks</span></div>
+    <div class="divider"></div>
+    <div class="stat-row"><span class="k">Hard costs (materials + labor)</span><span class="v" id="quote-hardcost">$0</span></div>
+    <div class="stat-row"><span class="k">Overhead &amp; profit</span><span class="v" id="quote-profit">$0</span></div>
+  </div>
+
+  <div class="card panel" id="panel-materials">
+    <div class="big-number-label">Material & Labor Takeoff</div>
+    <div style="margin-top:10px;" id="trades-list"></div>
+    <button class="reset-btn" id="reset-trades">Reset all lines to estimate</button>
+  </div>
+
+  <div class="card panel" id="panel-timeline">
+    <div class="big-number-label">Build Timeline</div>
+    <div class="big-number" id="timeline-total" style="font-size:28px; margin-bottom:12px;">0 weeks</div>
+    <div id="phases-list"></div>
+  </div>
+
+  <div class="card panel" id="panel-profit">
+    <div class="slider-row">
+      <div class="field-label"><span>Target Margin</span><span class="slider-value" id="margin-label">18%</span></div>
+      <input type="range" id="margin-slider" min="8" max="30" step="1" value="18">
+    </div>
+    <div class="divider"></div>
+    <div class="big-number-label">Profit on This Build</div>
+    <div class="big-number" id="profit-amount">$0</div>
+    <div id="profit-stamp"></div>
+    <div class="whatif" id="profit-whatif"></div>
+  </div>
+
+  <div class="card panel" id="panel-portfolio">
+    <div class="big-number-label" style="margin-bottom:10px;">Every Build In Play</div>
+    <div class="rollup-row" id="rollup-row"></div>
+    <div id="portfolio-list"></div>
+  </div>
+
+  <div class="card panel" id="panel-docs">
+    <div class="big-number-label" style="margin-bottom:6px;">Permits & Documents</div>
+    <div id="docs-list"></div>
+    <div class="doc-hint">Tap any item to cycle its status</div>
+  </div>
+
+  <div class="footer-note">
+    Same margin logic behind Profit Pilot in Truckers Shield —<br>rebuilt for the jobsite instead of the cab.
+  </div>
+
+</div>
+
+<script>
+  const RATES = {
+    tiny:   { builder: 145, standard: 175, premium: 215 },
+    duplex: { builder: 125, standard: 150, premium: 185 },
+    spec:   { builder: 135, standard: 165, premium: 205 }
+  };
+  const REGION_MULT = { durham: 1.00, danville: 0.92 };
+  const SQFT_RANGE = {
+    tiny:   { min: 400,  max: 900,  step: 25, def: 600 },
+    duplex: { min: 1400, max: 2600, step: 50, def: 1800 },
+    spec:   { min: 1800, max: 4200, step: 50, def: 2600 }
+  };
+  const WEEKS_BASE = { tiny: 10, duplex: 16, spec: 22 };
+  const WEEKS_SCALE = { tiny: 150, duplex: 300, spec: 350 };
+
+  const TRADES = [
+    { name:'Sitework & Foundation', pct:0.12, materialShare:0.55, materialUnit:'cu yd concrete',        materialPrice:185,  laborRate:65 },
+    { name:'Framing & Lumber',      pct:0.24, materialShare:0.70, materialUnit:'board ft lumber',        materialPrice:1.35, laborRate:48 },
+    { name:'Roofing',               pct:0.08, materialShare:0.55, materialUnit:'roofing squares',        materialPrice:420,  laborRate:55 },
+    { name:'Windows & Doors',       pct:0.09, materialShare:0.75, materialUnit:'window & door units',    materialPrice:850,  laborRate:50 },
+    { name:'Electrical',            pct:0.10, materialShare:0.40, materialUnit:'circuits',               materialPrice:145,  laborRate:72 },
+    { name:'Plumbing',              pct:0.09, materialShare:0.40, materialUnit:'fixtures',                materialPrice:165,  laborRate:75 },
+    { name:'HVAC',                  pct:0.08, materialShare:0.55, materialUnit:'tons capacity',           materialPrice:1350, laborRate:68 },
+    { name:'Interior Finish',       pct:0.14, materialShare:0.50, materialUnit:'sqft drywall/paint/trim', materialPrice:6.10, laborRate:46 },
+    { name:'Cabinets & Fixtures',   pct:0.06, materialShare:0.80, materialUnit:'linear ft cabinetry',     materialPrice:310,  laborRate:52 }
+  ];
+
+  const PHASES = [
+    { name: 'Site Prep & Foundation', pct: 0.15 },
+    { name: 'Framing & Dry-In',       pct: 0.25 },
+    { name: 'Rough-Ins (MEP)',        pct: 0.20 },
+    { name: 'Insulation & Drywall',   pct: 0.15 },
+    { name: 'Interior Finish',        pct: 0.20 },
+    { name: 'Punch List & CO',        pct: 0.05 }
+  ];
+  const PHASE_COLORS = ['#6FA8C9', '#5C93B2', '#4A7E9C', '#3D6B87', '#2F5872', '#22475D'];
+
+  const SAMPLE_PROJECTS = [
+    { name:'Ridge Street Duplex',    phase:'Framing & Dry-In', totalQuote:268000, spentToDate:96000,  projectedProfit:41000 },
+    { name:'Founders Row Spec Home', phase:'Rough-Ins (MEP)',  totalQuote:512000, spentToDate:285000, projectedProfit:58000 },
+    { name:'Council Rd ADU',         phase:'Punch List & CO',  totalQuote:152000, spentToDate:149500, projectedProfit:6200 }
+  ];
+
+  const DOC_TYPES = [
+    { name:'Building Permit', status:'approved' },
+    { name:'Site Plan / Zoning Approval', status:'approved' },
+    { name:'Erosion & Sediment Control Permit', status:'filed' },
+    { name:'Electrical Permit', status:'filed' },
+    { name:'Plumbing Permit', status:'missing' },
+    { name:'Mechanical (HVAC) Permit', status:'missing' },
+    { name:'Certificate of Occupancy', status:'missing' }
+  ];
+  const DOC_CYCLE = ['missing', 'filed', 'approved'];
+  const DOC_COLORS = { missing:'var(--red)', filed:'var(--line-cyan)', approved:'var(--orange)' };
+  const DOC_LABELS = { missing:'Missing', filed:'Filed', approved:'Approved' };
+
+  const state = {
+    buildType: 'tiny', region: 'danville', finish: 'standard',
+    sqft: 600, margin: 18, tab: 'quote',
+    overrides: {},
+    docs: DOC_TYPES.map(d => ({ name: d.name, status: d.status }))
+  };
+
+  function fmtMoney(n){ return '$' + Math.round(n).toLocaleString('en-US'); }
+  function round2(n){ return Math.round(n * 100) / 100; }
+
+  function getTradeDefaults(i, s){
+    const rate = RATES[s.buildType][s.finish] * REGION_MULT[s.region];
+    const tradeDollar = s.sqft * rate * TRADES[i].pct;
+    const matDollar = tradeDollar * TRADES[i].materialShare;
+    const laborDollar = tradeDollar * (1 - TRADES[i].materialShare);
+    return {
+      matQty: round2(matDollar / TRADES[i].materialPrice),
+      matPrice: TRADES[i].materialPrice,
+      laborHrs: round2(laborDollar / TRADES[i].laborRate),
+      laborRate: TRADES[i].laborRate
+    };
+  }
+
+  function getEffectiveLine(i, s){
+    const def = getTradeDefaults(i, s);
+    const matOv = s.overrides[i + '-mat'];
+    const laborOv = s.overrides[i + '-labor'];
+    return {
+      matQty: matOv ? matOv.qty : def.matQty,
+      matPrice: matOv ? matOv.price : def.matPrice,
+      laborHrs: laborOv ? laborOv.qty : def.laborHrs,
+      laborRate: laborOv ? laborOv.price : def.laborRate
+    };
+  }
+
+  function computeHardCost(s){
+    let total = 0;
+    const lines = [];
+    TRADES.forEach((t, i) => {
+      const eff = getEffectiveLine(i, s);
+      const matAmt = eff.matQty * eff.matPrice;
+      const laborAmt = eff.laborHrs * eff.laborRate;
+      lines.push({ ...t, ...eff, matAmt, laborAmt, tradeTotal: matAmt + laborAmt });
+      total += matAmt + laborAmt;
+    });
+    return { total, lines };
+  }
+
+  function computeBuildEconomics(s){
+    const { total: hardCost, lines } = computeHardCost(s);
+    const quotePrice = hardCost / (1 - s.margin / 100);
+    const profit = quotePrice - hardCost;
+    const costPerSqft = quotePrice / s.sqft;
+
+    const baseSqft = SQFT_RANGE[s.buildType].def;
+    const rawWeeks = WEEKS_BASE[s.buildType] + (s.sqft - baseSqft) / WEEKS_SCALE[s.buildType];
+    const totalWeeks = Math.max(WEEKS_BASE[s.buildType] * 0.75, Math.round(rawWeeks * 2) / 2);
+
+    return { hardCost, quotePrice, profit, costPerSqft, totalWeeks, lines };
+  }
+
+  function setActiveSeg(container, value){
+    container.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.value === value));
+  }
+
+  function render(){
+    const econ = computeBuildEconomics(state);
+
+    // Quote tab
+    document.getElementById('quote-total').textContent = fmtMoney(econ.quotePrice);
+    document.getElementById('quote-persqft').textContent = fmtMoney(econ.costPerSqft) + '/sqft';
+    document.getElementById('quote-weeks').textContent = econ.totalWeeks + ' wks';
+    document.getElementById('quote-hardcost').textContent = fmtMoney(econ.hardCost);
+    document.getElementById('quote-profit').textContent = fmtMoney(econ.profit);
+
+    // Materials tab
+    const tradesList = document.getElementById('trades-list');
+    tradesList.innerHTML = '';
+    econ.lines.forEach((line, i) => {
+      const block = document.createElement('div');
+      block.className = 'trade-block';
+      block.innerHTML = `
+        <div class="trade-head"><span>${line.name}</span><span class="amt">${fmtMoney(line.tradeTotal)}</span></div>
+        <div class="line-item">
+          <div class="line-top"><span>Material — ${line.materialUnit}</span><span class="line-amt">${fmtMoney(line.matAmt)}</span></div>
+          <div class="line-inputs">
+            <input type="number" step="0.1" data-trade="${i}" data-type="mat" data-field="qty" value="${line.matQty}">
+            <span>×</span> $
+            <input type="number" step="0.01" data-trade="${i}" data-type="mat" data-field="price" value="${line.matPrice}">
+          </div>
+        </div>
+        <div class="line-item">
+          <div class="line-top"><span>Labor — hrs</span><span class="line-amt">${fmtMoney(line.laborAmt)}</span></div>
+          <div class="line-inputs">
+            <input type="number" step="1" data-trade="${i}" data-type="labor" data-field="qty" value="${line.laborHrs}">
+            <span>×</span> $
+            <input type="number" step="1" data-trade="${i}" data-type="labor" data-field="price" value="${line.laborRate}">
+            <span>/hr</span>
+          </div>
+        </div>
+      `;
+      tradesList.appendChild(block);
+    });
+
+    // Timeline tab
+    document.getElementById('timeline-total').textContent = econ.totalWeeks + ' weeks';
+    const phasesList = document.getElementById('phases-list');
+    phasesList.innerHTML = '';
+    PHASES.forEach((p, i) => {
+      const wks = Math.round(econ.totalWeeks * p.pct * 2) / 2;
+      const div = document.createElement('div');
+      div.className = 'phase-item';
+      div.innerHTML = `
+        <div class="phase-top"><span class="name">${p.name}</span><span class="wk">${wks} wk</span></div>
+        <div class="phase-track"><div class="phase-fill" style="width:${(p.pct*100).toFixed(0)}%; background:${PHASE_COLORS[i]}"></div></div>
+      `;
+      phasesList.appendChild(div);
+    });
+
+    // Profit tab
+    document.getElementById('profit-amount').textContent = fmtMoney(econ.profit);
+    const stampDiv = document.getElementById('profit-stamp');
+    if (state.margin < 13){
+      stampDiv.innerHTML = '<div class="stamp thin">Margin Thin</div>';
+    } else if (state.margin < 20){
+      stampDiv.innerHTML = '<div class="stamp healthy">On Target</div>';
+    } else {
+      stampDiv.innerHTML = '<div class="stamp healthy">Margin Healthy</div>';
+    }
+    const lowerState = Object.assign({}, state, { margin: Math.max(8, state.margin - 5) });
+    const lowerEcon = computeBuildEconomics(lowerState);
+    const diff = econ.profit - lowerEcon.profit;
+    document.getElementById('profit-whatif').innerHTML =
+      `Drop your bid <b>5 points</b> to win it faster and you give up <b>${fmtMoney(diff)}</b> in profit on this build alone.`;
+
+    // Portfolio tab
+    const allProjects = [
+      { name: 'This Estimate (above)', phase: 'Not started', totalQuote: econ.quotePrice, spentToDate: 0, projectedProfit: econ.profit, isLive: true },
+      ...SAMPLE_PROJECTS
+    ];
+    const rollupTotalQuote = allProjects.reduce((a, p) => a + p.totalQuote, 0);
+    const rollupProfit = allProjects.reduce((a, p) => a + p.projectedProfit, 0);
+    const rollupMargin = (rollupProfit / rollupTotalQuote) * 100;
+
+    document.getElementById('rollup-row').innerHTML = `
+      <div class="rollup-box"><div class="rl-label">Committed</div><div class="rl-val">${fmtMoney(rollupTotalQuote)}</div></div>
+      <div class="rollup-box"><div class="rl-label">Profit</div><div class="rl-val">${fmtMoney(rollupProfit)}</div></div>
+      <div class="rollup-box"><div class="rl-label">Avg Margin</div><div class="rl-val">${rollupMargin.toFixed(1)}%</div></div>
+    `;
+
+    const portfolioList = document.getElementById('portfolio-list');
+    portfolioList.innerHTML = '';
+    allProjects.forEach(p => {
+      const pctSpent = Math.min(100, (p.spentToDate / p.totalQuote) * 100);
+      const marginPct = (p.projectedProfit / p.totalQuote) * 100;
+      const thin = marginPct < 8;
+      const div = document.createElement('div');
+      div.className = 'proj-card';
+      div.innerHTML = `
+        <div class="proj-top"><span class="proj-name">${p.name}</span><span class="proj-stats"><b>${fmtMoney(p.totalQuote)}</b></span></div>
+        <div class="proj-phase">${p.phase}</div>
+        <div class="proj-bar-track"><div class="proj-bar-fill" style="width:${pctSpent.toFixed(0)}%; background:${thin ? 'var(--red)' : 'var(--navy)'}"></div></div>
+        <div class="proj-stats">
+          <span>Spent: <b>${fmtMoney(p.spentToDate)}</b></span>
+          <span class="${thin ? 'profit-warn' : 'profit-good'}">Profit: ${fmtMoney(p.projectedProfit)}</span>
+        </div>
+      `;
+      portfolioList.appendChild(div);
+    });
+
+    // Docs tab
+    const docsList = document.getElementById('docs-list');
+    docsList.innerHTML = '';
+    state.docs.forEach((d, i) => {
+      const div = document.createElement('div');
+      div.className = 'doc-item';
+      div.dataset.doc = i;
+      div.innerHTML = `
+        <span class="doc-name">${d.name}</span>
+        <span class="doc-status"><span class="doc-dot" style="background:${DOC_COLORS[d.status]}"></span>${DOC_LABELS[d.status]}</span>
+      `;
+      docsList.appendChild(div);
+    });
+  }
+
+  // Build type toggle
+  document.getElementById('seg-buildtype').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.buildType = btn.dataset.value;
+    setActiveSeg(e.currentTarget, state.buildType);
+    const range = SQFT_RANGE[state.buildType];
+    const slider = document.getElementById('sqft-slider');
+    slider.min = range.min; slider.max = range.max; slider.step = range.step; slider.value = range.def;
+    state.sqft = range.def;
+    state.overrides = {};
+    document.getElementById('sqft-label').textContent = state.sqft + ' sqft';
+    render();
+  });
+
+  document.getElementById('seg-region').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.region = btn.dataset.value;
+    setActiveSeg(e.currentTarget, state.region);
+    render();
+  });
+
+  document.getElementById('seg-finish').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.finish = btn.dataset.value;
+    setActiveSeg(e.currentTarget, state.finish);
+    render();
+  });
+
+  document.getElementById('sqft-slider').addEventListener('input', e => {
+    state.sqft = parseInt(e.target.value, 10);
+    document.getElementById('sqft-label').textContent = state.sqft + ' sqft';
+    render();
+  });
+
+  document.getElementById('margin-slider').addEventListener('input', e => {
+    state.margin = parseInt(e.target.value, 10);
+    document.getElementById('margin-label').textContent = state.margin + '%';
+    render();
+  });
+
+  document.getElementById('trades-list').addEventListener('input', e => {
+    const input = e.target;
+    if (input.tagName !== 'INPUT') return;
+    const i = input.dataset.trade, type = input.dataset.type, field = input.dataset.field;
+    const key = i + '-' + type;
+    const def = getTradeDefaults(parseInt(i, 10), state);
+    const current = state.overrides[key] || {
+      qty: type === 'mat' ? def.matQty : def.laborHrs,
+      price: type === 'mat' ? def.matPrice : def.laborRate
+    };
+    current[field] = parseFloat(input.value) || 0;
+    state.overrides[key] = current;
+    render();
+  });
+
+  document.getElementById('reset-trades').addEventListener('click', () => {
+    state.overrides = {};
+    render();
+  });
+
+  document.getElementById('docs-list').addEventListener('click', e => {
+    const item = e.target.closest('.doc-item');
+    if (!item) return;
+    const i = parseInt(item.dataset.doc, 10);
+    const idx = DOC_CYCLE.indexOf(state.docs[i].status);
+    state.docs[i].status = DOC_CYCLE[(idx + 1) % DOC_CYCLE.length];
+    render();
+  });
+
+  document.getElementById('tabbar').addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.tab = btn.dataset.tab;
+    document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + state.tab).classList.add('active');
+  });
+
+  render();
+</script>
+</body>
+</html>
